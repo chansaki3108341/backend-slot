@@ -1,0 +1,40 @@
+# Compilation artifacts
+/target/
+**/*.rs.bk
+
+# Debug symbol files
+*.pdb
+
+# Executables (Windows)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Editor temporary files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Rust profile directory
+.cargo-ok
+
+# Lock file (optional)
+# Cargo.lock
+
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux specific files
+.directory
+.Trash-*
+
+# Windows specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini/target

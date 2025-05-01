@@ -1,0 +1,17 @@
+[package]
+name        = "backend-slot"          # `cargo install backend-slot`
+version     = "0.1.0"                 # `backend-slot --version`
+edition     = "2021"
+authors     = ["Mio Inamijima <namachan0531@gmail.com>"]
+description = "A colourful CLI slot-machine that chooses your next backend language."
+license     = "MIT"
+readme      = "README.md"
+repository  = "https://github.com/mioinamijima/backend-slot"
+keywords    = ["cli", "slot", "backend", "fun"]
+categories  = ["command-line-utilities"]
+
+[dependencies]
+rand    = "0.8"             # 乱数
+colored = "2"               # ANSI カラー
+clap    = { version = "4", features = ["derive"] }  # `--help`, `--version`
+
