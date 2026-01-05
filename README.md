@@ -56,6 +56,54 @@ The tool randomly selects from the following backend languages:
 - Elixir
 - Kotlin
 
+## Custom Language List (Optional)
+
+By default, `backend-slot` chooses from a curated built-in list. You can optionally provide your own list via a TOML config file.
+
+### Usage
+
+```bash
+backend-slot --config ./languages.toml
+```
+
+Note: `backend-slot` does not auto-discover config files. The config is loaded only when `--config` is provided.
+
+### Config format (languages.toml)
+
+`schema_version` currently supports only `1`. If omitted, it defaults to `1`.
+
+#### Minimal (names only)
+
+```toml
+schema_version = 1
+languages = ["Rust", "Go", "Python", "Node.js"]
+```
+
+#### Extended (name + optional color)
+
+```toml
+schema_version = 1
+languages = [
+  { name = "Rust", color = "red" },
+  { name = "Go", color = "cyan" },
+  { name = "Python", color = "blue" },
+  { name = "Scala" } # color is optional
+]
+```
+
+### Color rules
+
+* `color` is optional.
+* If `color` is omitted, `backend-slot` uses the built-in default color when the language name matches one of the built-in languages (case-insensitive). Otherwise it falls back to `white`.
+* Supported color names are:
+  `red`, `blue`, `green`, `yellow`, `magenta`, `cyan`, `purple`, `orange`, `white`.
+
+### Validation / error behavior
+
+* `languages` must be a non-empty array.
+* Language names must be non-empty strings.
+* If `--config` is provided and the file is missing or invalid, `backend-slot` prints an error to stderr and exits with status code 2.
+
 ## Requirements
 
 - A terminal that supports ANSI color codes

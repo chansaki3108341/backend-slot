@@ -1,8 +1,14 @@
 use rand::seq::SliceRandom;
 use std::{thread, time};
 use std::io::{self, Write};
+use std::path::PathBuf;
 use colored::Colorize;
 use clap::Parser;
+
+mod config;
+mod languages;
+
+use languages::Language;
 
 /// A colourful one-arm bandit that recommends a backend language.
 #[derive(Parser)]
@@ -10,23 +16,25 @@ use clap::Parser;
           version,                  // clap will fill in the package version
           about  = "Spin the slot machine and pick your next backend language.",
           long_about = None)]
-struct Cli { /* No options for now. Can add --fast etc. in the future */ }
+struct Cli {
+    /// Load languages from a TOML config file.
+    #[arg(long, value_name = "PATH")]
+    config: Option<PathBuf>,
+}
 
 fn main() {
     // ----- CLI parsing (--help/--version are handled here) -----
-    let _args = Cli::parse();
-    let languages = vec![
-        ("Rust", "red"),
-        ("Go", "cyan"),
-        ("Python", "blue"),
-        ("Node.js", "green"),
-        ("Java", "yellow"),
-        ("C#", "magenta"),
-        ("PHP", "purple"),
-        ("Ruby", "red"),
-        ("Elixir", "magenta"),
-        ("Kotlin", "orange"),
-    ];
+    let args = Cli::parse();
+    let languages: Vec<Language> = match args.config.as_deref() {
+        Some(path) => match config::load_languages_from_file(path) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("backend-slot: {}", e);
+                std::process::exit(2);
+            }
+        },
+        None => languages::builtin_languages(),
+    };
 
     // ── Light-up Marquee ──────────────────────────────
     // match cabinet width (3×10 cells + 2 separators + 2 borders = 34)
@@ -46,7 +54,9 @@ fn main() {
     let long_duration = time::Duration::from_millis(500);
     
     // Pre-determine the language that will be chosen
-    let chosen_lang = languages.choose(&mut rng).unwrap().0;
+    let chosen_lang: &Language = languages
+        .choose(&mut rng)
+        .expect("builtin languages must be non-empty");
     
     // ── Slot Cabinet ─────────────────────────────────
     let v = "║".bright_yellow();            // yellow vertical bar (re-use everywhere)
@@ -70,8 +80,8 @@ fn main() {
     io::stdout().flush().unwrap();
     
     // Languages to fix in top and bottom rows when each column stops
-    let mut top_fixed    = [None::<&str>; 3];
-    let mut bottom_fixed = [None::<&str>; 3];
+    let mut top_fixed: [Option<&Language>; 3] = [None, None, None];
+    let mut bottom_fixed: [Option<&Language>; 3] = [None, None, None];
 
     // Spin the slot machine
     for i in 0..60 {
@@ -81,9 +91,9 @@ fn main() {
         let right_stopped = i >= 59;
 
         // Middle row (row 2) always shows chosen_lang when column stops
-        let l2 = if left_stopped  { chosen_lang } else { languages.choose(&mut rng).unwrap().0 };
-        let m2 = if mid_stopped   { chosen_lang } else { languages.choose(&mut rng).unwrap().0 };
-        let r2 = if right_stopped { chosen_lang } else { languages.choose(&mut rng).unwrap().0 };
+        let l2: &Language = if left_stopped  { chosen_lang } else { languages.choose(&mut rng).unwrap() };
+        let m2: &Language = if mid_stopped   { chosen_lang } else { languages.choose(&mut rng).unwrap() };
+        let r2: &Language = if right_stopped { chosen_lang } else { languages.choose(&mut rng).unwrap() };
 
         // When a column stops, determine fixed values for top and bottom rows (different from chosen_lang)
         if left_stopped  && top_fixed[0].is_none() {
@@ -100,38 +110,38 @@ fn main() {
         }
 
         // === Row 1 ===
-        let l1 = if left_stopped  { top_fixed[0].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
-        let m1 = if mid_stopped   { top_fixed[1].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
-        let r1 = if right_stopped { top_fixed[2].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
+        let l1: &Language = if left_stopped  { top_fixed[0].unwrap() } else { languages.choose(&mut rng).unwrap() };
+        let m1: &Language = if mid_stopped   { top_fixed[1].unwrap() } else { languages.choose(&mut rng).unwrap() };
+        let r1: &Language = if right_stopped { top_fixed[2].unwrap() } else { languages.choose(&mut rng).unwrap() };
 
         // === Row 3 ===
-        let l3 = if left_stopped  { bottom_fixed[0].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
-        let m3 = if mid_stopped   { bottom_fixed[1].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
-        let r3 = if right_stopped { bottom_fixed[2].unwrap() } else { languages.choose(&mut rng).unwrap().0 };
+        let l3: &Language = if left_stopped  { bottom_fixed[0].unwrap() } else { languages.choose(&mut rng).unwrap() };
+        let m3: &Language = if mid_stopped   { bottom_fixed[1].unwrap() } else { languages.choose(&mut rng).unwrap() };
+        let r3: &Language = if right_stopped { bottom_fixed[2].unwrap() } else { languages.choose(&mut rng).unwrap() };
 
         // Draw all 3 rows together
         print!("\r{v}");                     // -- Row 1 --
-        print_colored(l1, language_color(l1, &languages), 10);
+        print_colored(l1.name.as_str(), l1.color.as_str(), 10);
         print!("{v}");
-        print_colored(m1, language_color(m1, &languages), 10);
+        print_colored(m1.name.as_str(), m1.color.as_str(), 10);
         print!("{v}");
-        print_colored(r1, language_color(r1, &languages), 10);
+        print_colored(r1.name.as_str(), r1.color.as_str(), 10);
         println!("{v}");
 
         print!("{v}");                       // -- Row 2 --
-        print_colored(l2, language_color(l2, &languages), 10);
+        print_colored(l2.name.as_str(), l2.color.as_str(), 10);
         print!("{v}");
-        print_colored(m2, language_color(m2, &languages), 10);
+        print_colored(m2.name.as_str(), m2.color.as_str(), 10);
         print!("{v}");
-        print_colored(r2, language_color(r2, &languages), 10);
+        print_colored(r2.name.as_str(), r2.color.as_str(), 10);
         println!("{v}");
 
         print!("{v}");                       // -- Row 3 --
-        print_colored(l3, language_color(l3, &languages), 10);
+        print_colored(l3.name.as_str(), l3.color.as_str(), 10);
         print!("{v}");
-        print_colored(m3, language_color(m3, &languages), 10);
+        print_colored(m3.name.as_str(), m3.color.as_str(), 10);
         print!("{v}");
-        print_colored(r3, language_color(r3, &languages), 10);
+        print_colored(r3.name.as_str(), r3.color.as_str(), 10);
         println!("{v}");
 
         io::stdout().flush().unwrap();
@@ -150,7 +160,7 @@ fn main() {
     print!("\x1B[8B\x1B[?25h");
     
     // ── JACKPOT Banner ──────────────────────────────
-    let color = language_color(chosen_lang, &languages);
+    let color = chosen_lang.color.as_str();
     let jp_top =  format!("╔{}╗", "═".repeat(CAB_WIDTH - 2));
     let jp_mid =  format!("║{:^width$}║", "JACKPOT!", width = CAB_WIDTH - 2);
     let jp_bot =  format!("╚{}╝", "═".repeat(CAB_WIDTH - 2));
@@ -163,19 +173,24 @@ fn main() {
     println!();
 
     print!("Use ");
-    print_colored_line(chosen_lang, color);
+    print_colored_line(chosen_lang.name.as_str(), color);
     println!(" for your next backend project!");
 }
 
 // Return a random language other than the chosen_lang
 fn random_other<'a>(
     rng: &mut rand::rngs::ThreadRng,
-    exclude: &str,
-    langs: &Vec<(&'a str, &'a str)>,
-) -> &'a str {
+    exclude: &'a Language,
+    langs: &'a [Language],
+) -> &'a Language {
+    // Degenerate case guard: if there's no alternative, return exclude to avoid infinite loop.
+    if langs.iter().all(|l| l.name == exclude.name) {
+        return exclude;
+    }
+
     loop {
-        let cand = langs.choose(rng).unwrap().0;
-        if cand != exclude {
+        let cand = langs.choose(rng).expect("language list must be non-empty");
+        if cand.name != exclude.name {
             return cand;
         }
     }
@@ -211,13 +226,4 @@ fn print_colored_line(text: &str, color: &str) {
         "orange" => print!("{}", text.truecolor(255, 165, 0)),
         _ => print!("{}", text),
     }
-}
-
-fn language_color<'a>(lang: &str, languages: &Vec<(&'a str, &'a str)>) -> &'a str {
-    for (name, color) in languages {
-        if *name == lang {
-            return color;
-        }
-    }
-    "white"
 }

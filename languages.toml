@@ -1,0 +1,7 @@
+schema_version = 1
+languages = [
+  { name = "Rust", color = "red" },
+  { name = "Go", color = "cyan" },
+  { name = "Python", color = "blue" },
+  { name = "Scala" } # color is optional
+]
